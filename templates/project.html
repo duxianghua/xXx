@@ -1,0 +1,169 @@
+{% extends "base.html"%}
+{% load staticfiles %}
+{% block css %}
+    <!-- Datatables -->
+    <link href="{% static "vendors/datatables.net-bs/css/dataTables.bootstrap.min.css" %}" rel="stylesheet">
+    <link href="{% static "vendors/datatables.net-responsive-bs/css/responsive.bootstrap.min.css" %}" rel="stylesheet">
+    <!-- Datatables -->
+{% endblock %}
+{% block content %}
+<div class="right_col" role="main">
+    <div class="col-md-12 col-sm-12 col-xs-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">
+                    <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
+                        高级过滤,点击展开或隐藏<span style="color: #DCDCDC;"><small><<<</small></span>
+                    </a>
+                </h4>
+            </div>
+            <div id="collapseOne" class="panel-collapse collapse in">
+                <div class="panel-body">
+                    <div class="col-md-6 col-sm-6 col-xs-6">
+                        <div class="col-md-3 col-sm-3 col-xs-0"></div>
+                        <div class="col-md-6 col-sm-6 col-xs-12">
+                            <small>选择项目:</small>
+                            <select class="form-control input-sm" id="project_id">
+                                <option value="1">选择项目</option>
+                                {% for project in project_list %}
+                                <option value='{{ project.project_name }}'>{{ project.project_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div style="height: 10px"></div>
+                            <small>选择服务器<可多选>:</small>
+                            <select class="form-control" multiple="multiple" size="4" id="hosts_id">
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-sm-6 col-xs-6">
+                        <div class="col-md-6 col-sm-6 col-xs-12">
+                            <small>选择动作:</small>
+                            <select class="form-control input-sm" id="clients">
+                                <option value="1">Service Manager</option>
+                            </select>
+                            <div style="height: 10px"></div>
+                            <small>自定义过滤条件:</small>
+                            <input id="zdy_re" type="text" class="form-control" placeholder="支持正则表达式" style="width:100%">
+                        </div>
+                    </div>
+                    <div class="col-md-12 col-sm-12 col-xs-12">
+                        <div style="height: 10px"></div>
+                        <div class="col-md-6 col-sm-6 col-xs-6 text-center">
+
+                        </div>
+                        <div class="col-md-6 col-sm-6 col-xs-6 text-center">
+                            <button class="btn btn-default" type="button" onclick="get_data()" disabled="disabled" id="show_services">查看服务</button>
+                            <a id="show_log_a" href="" target="_blank"><button id="show_log_b" class="btn btn-default" disabled="disabled">查看日志</button></a>
+                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#code_update_modal" disabled="disabled" id="code_update">代码更新</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12 col-sm-12 col-xs-12">
+
+        </div>
+        <div class="clearfix"></div>
+        <div class="x_panel" id="table_window" style="display: none">
+            <div class="x_content" id="table_id">
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="code_update_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header text-center">
+                <h4>项目代码更新 &nbsp; <small style="color: red;display: none;"id="zxz">执行中......</small>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </h4>
+
+            </div>
+            <textarea class="form-control" id="result" style="min-height:445px;z-index:-1;" readonly="readonly"></textarea>
+            <div class="modal-footer">
+                <div class="btn-group pull-right">
+                    <a class="btn btn-info" onclick="code_manger('pull')">代码拉取</a>
+                    <a class="btn btn-info" onclick="code_manger('go')">代码同步</a>
+                    <a class="btn btn-info" data-dismiss="modal">关闭</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- /page content -->
+{% endblock %}
+{% block script %}
+    <!-- Datatables -->
+    <script src="{% static "vendors/datatables.net/js/jquery.dataTables.min.js" %}"></script>
+    <script src="{% static "vendors/datatables.net-bs/js/dataTables.bootstrap.min.js" %}"></script>
+    <script src="{% static "vendors/datatables.net-responsive/js/dataTables.responsive.min.js" %}"></script>
+
+    <script>
+      $(document).ready(function() {
+        $('#datatable-responsive').DataTable();
+          //status()
+      });
+    function selectArow(sObject) {
+        $(sObject).attr("style", "BACKGROUND-COLOR: #e6f0fc");
+        //alert($(sObject).text())
+    }
+      function turn_service(host,service,action){
+          $('#host').html(host);
+          $('#action').html(action);
+          $('#service').html(service);
+          $("#doc").html("执行中....");
+          $.getJSON("/salt/turn_services",{host:host,service:service,action:action},function(result){
+              if (result == true){
+                  $("#doc").html(action+" 成功");
+              }
+              else{
+                  $("#doc").html(action+" 失败");
+              }
+          });
+          status();
+        };
+
+    $('#project_id').change(function(){
+        $('#hosts_id').empty();
+        var project=$(this).val();
+        $.getJSON("/services/projecthost",{ project:project.toString()},function(result){
+            $.each(result, function(i) {
+                //$('#show_log_a').attr('href',result['log'])
+                //$('#show_log_b').attr('disabled',false)
+                $('#show_services').attr('disabled',false)
+                $('#code_update').attr('disabled',false)
+                $('#hosts_id').append("<option value='"+result[i]['id']+"'>"+result[i]['name']+"</option>");
+                $('#result').val("项目名称:"+project+'\n')
+                });
+            });
+        });
+    function  code_manger(action){
+        $("#zxz").show();
+        var project=$('#project_id').val();
+        var old = $('#result').val();
+        $('#result').val(old+'-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+'+'\n');
+        $.getJSON("/services/code",{ project:project.toString(),action:action},function(data){
+             var old = $('#result').val();
+             $('#result').val(old+data+'\n');
+            $("#zxz").hide();
+        });
+    };
+      function get_data(){
+          var host=$("#hosts_id").val();
+          if (host != null){
+              var re = $("#zdy_re").val();
+              var project=$("#project_id").val();
+              htmlobj= $.ajax({url:"/services/get_service?project="+project+"&hostid="+host+"&match="+re,async:false});
+              $("#table_id").html(htmlobj.responseText);
+              $('#datatable-responsive').DataTable();
+              $("#table_window").show();
+            }
+          else{
+              alert("请先选择服务器")
+            }
+          };
+    </script>
+    <!-- /Datatables -->
+{% endblock %}
